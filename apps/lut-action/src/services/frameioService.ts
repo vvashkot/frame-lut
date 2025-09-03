@@ -191,6 +191,60 @@ export class FrameIOService {
   }
 
   /**
+   * Create a new folder
+   */
+  async createFolder(
+    accountId: string,
+    parentId: string,
+    folderName: string,
+  ): Promise<Asset> {
+    try {
+      const url = `/accounts/${accountId}/files`;
+      const payload = {
+        data: {
+          name: folderName,
+          type: 'folder',
+          parent_id: parentId,
+        },
+      };
+      
+      logger.info({ 
+        url, 
+        payload,
+        accountId,
+        parentId 
+      }, 'Creating folder');
+      
+      const response = await this.axiosInstance.post(
+        url,
+        payload,
+        {
+          metadata: { startTime: Date.now() },
+        },
+      );
+      
+      const folderData = response.data.data || response.data;
+      const validated = AssetSchema.parse(folderData);
+      
+      logger.info({ 
+        folderId: validated.id,
+        folderName,
+        parentId 
+      }, 'Created folder');
+      
+      return validated;
+    } catch (error: any) {
+      logger.error({ 
+        accountId, 
+        parentId,
+        folderName,
+        error 
+      }, 'Failed to create folder');
+      throw error;
+    }
+  }
+
+  /**
    * Upload media file to Frame.io (handles chunked upload)
    */
   async uploadMedia(
@@ -430,16 +484,25 @@ export class FrameIOService {
   /**
    * List children of an asset (folder contents)
    */
-  async listAssetChildren(assetId: string, page = 1, perPage = 100): Promise<Asset[]> {
+  async listAssetChildren(assetId: string, page = 1, perPage = 100, accountId?: string): Promise<Asset[]> {
     try {
-      const response = await this.axiosInstance.get(`/assets/${assetId}/children`, {
+      const url = accountId 
+        ? `/accounts/${accountId}/files/${assetId}/children`
+        : `/assets/${assetId}/children`;
+        
+      const response = await this.axiosInstance.get(url, {
         params: {
           page,
           per_page: perPage,
         },
         metadata: { startTime: Date.now() },
       });
-      const assets = response.data.map((item: unknown) => AssetSchema.parse(item));
+      
+      const responseData = response.data.data || response.data;
+      const assets = Array.isArray(responseData) 
+        ? responseData.map((item: unknown) => AssetSchema.parse(item))
+        : [];
+      
       logger.debug({ assetId, count: assets.length }, 'Listed asset children');
       return assets;
     } catch (error) {

@@ -69,21 +69,67 @@ export async function uploadProcessedVideo(
 
     logger.info({ originalAssetId, accountId, fileName, size: fileStats.size }, 'Starting upload process');
 
-    // Get the parent folder of the original asset
+    // Get the original asset details
     const originalAsset = await frameioService.getAsset(originalAssetId, accountId);
-    const parentId = originalAsset.parent_id;
+    let uploadParentId = originalAsset.parent_id;
 
-    if (!parentId) {
-      throw new Error('Original asset has no parent folder');
+    if (!uploadParentId) {
+      throw new Error('Original asset has no parent');
+    }
+
+    // Check if the parent is a folder, if not we need to find or create one
+    let parentInfo;
+    try {
+      parentInfo = await frameioService.getAsset(uploadParentId, accountId);
+      logger.info({ 
+        parentId: uploadParentId, 
+        parentType: parentInfo.type,
+        parentName: parentInfo.name 
+      }, 'Parent entity info');
+      
+      if (parentInfo.type !== 'folder') {
+        // Parent is not a folder (likely a project root)
+        // We need to find or create a folder for processed videos
+        logger.info({ 
+          parentId: uploadParentId, 
+          parentType: parentInfo.type 
+        }, 'Parent is not a folder, looking for LUT_Processed folder');
+        
+        // Try to find an existing "LUT_Processed" folder
+        const children = await frameioService.listAssetChildren(uploadParentId, 1, 100, accountId);
+        const processedFolder = children.find(child => 
+          child.type === 'folder' && child.name === 'LUT_Processed'
+        );
+        
+        if (processedFolder) {
+          uploadParentId = processedFolder.id;
+          logger.info({ folderId: uploadParentId }, 'Using existing LUT_Processed folder');
+        } else {
+          // Create a new folder for processed videos
+          const newFolder = await frameioService.createFolder(
+            accountId,
+            uploadParentId,
+            'LUT_Processed'
+          );
+          uploadParentId = newFolder.id;
+          logger.info({ folderId: uploadParentId }, 'Created new LUT_Processed folder');
+        }
+      }
+    } catch (err) {
+      logger.error({ 
+        parentId: uploadParentId, 
+        error: err 
+      }, 'Error checking parent type, cannot proceed');
+      throw new Error(`Failed to verify upload location: ${err.message}`);
     }
 
     // Create a new file for the processed video
     const processedFileName = `${path.parse(originalAsset.name).name}_LUT_${lutName}${path.extname(fileName)}`;
     
-    logger.info({ parentId, processedFileName, size: fileStats.size }, 'Creating new file for upload');
+    logger.info({ parentId: uploadParentId, processedFileName, size: fileStats.size }, 'Creating new file for upload');
     const newFile = await frameioService.createFile(
       accountId,
-      parentId,
+      uploadParentId,
       processedFileName,
       fileStats.size
     );
@@ -113,7 +159,7 @@ export async function uploadProcessedVideo(
       // Create a version stack linking original and processed files
       const versionStack = await frameioService.createVersionStack(
         accountId,
-        parentId,
+        uploadParentId,
         originalAssetId,
         newFile.id
       );
