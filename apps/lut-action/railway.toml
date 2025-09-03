@@ -1,6 +1,5 @@
 [build]
-builder = "dockerfile"
-dockerfilePath = "./Dockerfile"
+buildCommand = "npm run build && npx tsx scripts/importLUTs.ts luts/ && echo 'LUTs imported successfully'"
 
 [deploy]
 startCommand = "npm start"
