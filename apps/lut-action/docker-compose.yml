@@ -1,0 +1,36 @@
+services:
+  # Single container running the service
+  lut-action:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lut-action
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - TMP_DIR=/tmp/archon-lut
+      - LOG_LEVEL=info
+      - LOG_PRETTY=false
+      # These will be overridden by .env file
+      - PUBLIC_URL=${PUBLIC_URL}
+      - FRAMEIO_CLIENT_ID=${FRAMEIO_CLIENT_ID}
+      - FRAMEIO_CLIENT_SECRET=${FRAMEIO_CLIENT_SECRET}
+      - FRAMEIO_S2S_CLIENT_ID=${FRAMEIO_S2S_CLIENT_ID}
+      - FRAMEIO_S2S_CLIENT_SECRET=${FRAMEIO_S2S_CLIENT_SECRET}
+      - FRAMEIO_WEBHOOK_SECRET=${FRAMEIO_WEBHOOK_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./.data:/app/.data
+      - ./.data/tmp:/tmp/archon-lut
+      - ./luts:/app/luts:ro
+      - ./.frameio-token:/app/.frameio-token:ro
+    networks:
+      - lut-network
+
+networks:
+  lut-network:
+    driver: bridge

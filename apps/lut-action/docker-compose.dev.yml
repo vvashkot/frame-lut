@@ -1,0 +1,86 @@
+services:
+  # Redis for queue management (development)
+  redis:
+    image: redis:7-alpine
+    container_name: lut-action-redis-dev
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-dev-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - lut-network-dev
+
+  # Development web server with hot reload
+  web-dev:
+    image: node:20-alpine
+    container_name: lut-action-web-dev
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - REDIS_URL=redis://redis:6379
+      - TMP_DIR=/tmp/archon-lut
+      - LOG_LEVEL=debug
+      - LOG_PRETTY=true
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./.data/tmp:/tmp/archon-lut
+      # Mount your local LUT directory (update path as needed)
+      # - /path/to/your/luts:/app/luts-library:ro
+    depends_on:
+      - redis
+    networks:
+      - lut-network-dev
+    command: sh -c "apk add --no-cache ffmpeg && npm install && npm run dev"
+
+  # Development worker with hot reload
+  worker-dev:
+    image: node:20-alpine
+    container_name: lut-action-worker-dev
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - TMP_DIR=/tmp/archon-lut
+      - LOG_LEVEL=debug
+      - LOG_PRETTY=true
+      - QUEUE_CONCURRENCY=1
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./.data/tmp:/tmp/archon-lut
+    depends_on:
+      - redis
+    networks:
+      - lut-network-dev
+    command: sh -c "apk add --no-cache ffmpeg && npm install && npm run worker"
+
+  # Redis Commander for debugging
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: lut-action-redis-commander-dev
+    platform: linux/amd64  # Specify platform for Apple Silicon compatibility
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - lut-network-dev
+
+networks:
+  lut-network-dev:
+    driver: bridge
+
+volumes:
+  redis-dev-data:
+    driver: local
