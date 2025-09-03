@@ -16,7 +16,16 @@ export async function processVideoRemotely(
   lutName: string
 ): Promise<{ id: string; versionId: string }> {
   try {
-    logger.info({ assetId, accountId, lutName }, 'Starting remote video processing');
+    logger.info({ assetId, accountId, lutName, lutPath }, 'Starting remote video processing');
+    
+    // Verify LUT file exists
+    try {
+      await fs.access(lutPath, fs.constants.R_OK);
+      logger.info({ lutPath }, 'LUT file verified accessible');
+    } catch (err) {
+      logger.error({ lutPath, error: err }, 'LUT file not accessible');
+      throw new Error(`LUT file not accessible: ${lutPath}`);
+    }
 
     // Get asset details
     const asset = await frameioService.getAsset(assetId, accountId);
@@ -49,28 +58,39 @@ export async function processVideoRemotely(
     logger.info({ assetId, lutName }, 'Processing video with FFmpeg (remote URL input)');
     
     await new Promise<void>((resolve, reject) => {
+      // Escape the LUT path for FFmpeg filter
+      const escapedLutPath = lutPath.replace(/:/g, '\\:').replace(/'/g, "\\'");
+      
       const ffmpegArgs = [
-        '-protocol_whitelist', 'file,http,https,tcp,tls', // Allow HTTPS protocols
         '-i', downloadUrl,        // Input from remote URL
-        '-vf', `scale=in_range=full:out_range=full,format=yuv422p10le,lut3d='${lutPath}',format=yuv420p`, // Scale, apply LUT, convert to compatible format
+        '-vf', `lut3d=${escapedLutPath}`, // Apply LUT with escaped path
         '-c:v', 'libx264',         // Video codec
-        '-preset', 'faster',       // Faster encoding for remote processing
-        '-crf', '20',             // Slightly lower quality for faster processing
+        '-preset', 'ultrafast',    // Fastest encoding to avoid timeout
+        '-crf', '23',             // Reasonable quality
         '-pix_fmt', 'yuv420p',    // Standard pixel format
         '-c:a', 'copy',           // Copy audio stream
         '-movflags', '+faststart', // Optimize for streaming
-        '-max_muxing_queue_size', '9999', // Increase muxing queue size
+        '-analyzeduration', '100M', // Increase analysis duration
+        '-probesize', '100M',      // Increase probe size
+        '-threads', '0',          // Use all available threads
         '-y',                     // Overwrite output
         outputPath                // Output file
       ];
 
       logger.debug({ ffmpegArgs }, 'FFmpeg command arguments');
+      logger.info({ 
+        lutPath, 
+        escapedLutPath,
+        outputPath,
+        ffmpegPath: config.FFMPEG_PATH
+      }, 'FFmpeg execution details');
 
       const ffmpeg = spawn(config.FFMPEG_PATH, ffmpegArgs);
       
       let errorOutput = '';
       let progressTimeout: NodeJS.Timeout;
       let lastProgress = Date.now();
+      let frameCount = 0;
 
       // Set a timeout for FFmpeg processing (5 minutes)
       const processTimeout = setTimeout(() => {
@@ -91,7 +111,19 @@ export async function processVideoRemotely(
       ffmpeg.stderr.on('data', (data) => {
         const output = data.toString();
         errorOutput += output;
-        lastProgress = Date.now(); // Reset progress timer on any output
+        
+        // Check for frame progress
+        const frameMatch = output.match(/frame=\s*(\d+)/);
+        if (frameMatch) {
+          const newFrameCount = parseInt(frameMatch[1], 10);
+          if (newFrameCount > frameCount) {
+            frameCount = newFrameCount;
+            lastProgress = Date.now(); // Reset progress timer on frame update
+            logger.info({ frames: frameCount }, 'FFmpeg processing frames');
+          }
+        } else {
+          lastProgress = Date.now(); // Reset progress timer on any output
+        }
         
         // Log all FFmpeg output for debugging
         logger.info({ ffmpeg: output.trim() }, 'FFmpeg output');
