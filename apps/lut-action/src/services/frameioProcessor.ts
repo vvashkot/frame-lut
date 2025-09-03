@@ -120,7 +120,7 @@ export async function uploadProcessedVideo(
         parentId: uploadParentId, 
         error: err 
       }, 'Error checking parent type, cannot proceed');
-      throw new Error(`Failed to verify upload location: ${err.message}`);
+      throw new Error(`Failed to verify upload location: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     // Create a new file for the processed video
