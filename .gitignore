@@ -52,11 +52,15 @@ temp/
 *.frameio-token
 lut-registry.json
 
-# LUTs (these are likely copyrighted)
+# LUTs - generally exclude except for deployment directory
 *.cube
 *.3dl
 *.look
 *.csp
+
+# Include LUTs in the deployment directory for Railway
+!apps/lut-action/luts/*.cube
+!apps/lut-action/luts/*.3dl
 
 # Redis dump
 dump.rdb

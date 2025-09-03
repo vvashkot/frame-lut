@@ -9,6 +9,7 @@ RUN apk add --no-cache \
     ffmpeg \
     curl \
     tini \
+    bash \
     && rm -rf /var/cache/apk/*
 
 # Verify FFmpeg installation
@@ -34,6 +35,13 @@ RUN npm ci --include=dev \
 # Copy source code
 COPY --chown=nodejs:nodejs . .
 
+# Copy LUTs directory if it exists (for pre-loaded LUTs)
+COPY --chown=nodejs:nodejs luts /app/luts/
+
+# Copy entrypoint script
+COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Build TypeScript
 RUN npm run build
 
@@ -53,5 +61,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use tini as entrypoint to handle signals properly
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the service
-CMD ["node", "dist/server.js"]
+# Use our custom entrypoint script that imports LUTs before starting
+CMD ["/app/docker-entrypoint.sh"]
