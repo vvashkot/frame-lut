@@ -16,6 +16,9 @@ const envSchema = z.object({
   TMP_DIR: z.string().default('/tmp/archon-lut'),
   MAX_INPUT_GB: z.string().default('25').transform((val) => parseInt(val, 10)),
   FFMPEG_PATH: z.string().default('ffmpeg'),
+  
+  // Processing Mode - 'local' downloads files locally, 'remote' uses Frame.io CDN URLs
+  PROCESSING_MODE: z.enum(['local', 'remote']).default('local'),
 
   // Frame.io API Configuration
   FRAMEIO_BASE_URL: z.string().url().default('https://api.frame.io/v4'),
