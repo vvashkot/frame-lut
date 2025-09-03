@@ -38,14 +38,17 @@ COPY --chown=nodejs:nodejs . .
 # Copy LUTs directory with descriptive names
 COPY --chown=nodejs:nodejs luts /app/luts/
 
-# Copy startup script
-COPY --chown=nodejs:nodejs scripts/startup.sh /app/startup.sh
-RUN chmod +x /app/startup.sh
-
-# Build TypeScript (including import script)
+# Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies after build
+# Import LUTs during build (while we still have tsx)
+RUN echo "Importing LUTs during Docker build..." && \
+    npx tsx scripts/importLUTs.ts /app/luts && \
+    echo "LUTs imported successfully" && \
+    ls -la /tmp/archon-lut/luts/ && \
+    echo "Registry contains $(grep -c '"id"' /tmp/archon-lut/luts/registry.json) LUTs"
+
+# Remove dev dependencies after build and LUT import
 RUN npm prune --production
 
 # Switch to non-root user
@@ -61,5 +64,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use tini as entrypoint to handle signals properly
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Use startup script to import LUTs and start the application
-CMD ["/app/startup.sh"]
+# Start the application directly (LUTs already imported during build)
+CMD ["npm", "start"]
