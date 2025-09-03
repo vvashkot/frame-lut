@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/server.ts",
     "build": "tsc -p tsconfig.json",
+    "build:railway": "npm run build && npx tsx scripts/importLUTs.ts luts/",
     "start": "node dist/server.js",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
