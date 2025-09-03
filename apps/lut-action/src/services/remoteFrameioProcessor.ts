@@ -50,12 +50,16 @@ export async function processVideoRemotely(
     
     await new Promise<void>((resolve, reject) => {
       const ffmpegArgs = [
+        '-protocol_whitelist', 'file,http,https,tcp,tls', // Allow HTTPS protocols
         '-i', downloadUrl,        // Input from remote URL
-        '-vf', `lut3d='${lutPath}'`, // Apply LUT
+        '-vf', `scale=in_range=full:out_range=full,format=yuv422p10le,lut3d='${lutPath}',format=yuv420p`, // Scale, apply LUT, convert to compatible format
         '-c:v', 'libx264',         // Video codec
-        '-preset', 'medium',       // Encoding speed/quality tradeoff
-        '-crf', '18',             // Quality (lower = better, 18 is visually lossless)
+        '-preset', 'faster',       // Faster encoding for remote processing
+        '-crf', '20',             // Slightly lower quality for faster processing
+        '-pix_fmt', 'yuv420p',    // Standard pixel format
         '-c:a', 'copy',           // Copy audio stream
+        '-movflags', '+faststart', // Optimize for streaming
+        '-max_muxing_queue_size', '9999', // Increase muxing queue size
         '-y',                     // Overwrite output
         outputPath                // Output file
       ];
@@ -65,27 +69,56 @@ export async function processVideoRemotely(
       const ffmpeg = spawn(config.FFMPEG_PATH, ffmpegArgs);
       
       let errorOutput = '';
+      let progressTimeout: NodeJS.Timeout;
+      let lastProgress = Date.now();
+
+      // Set a timeout for FFmpeg processing (5 minutes)
+      const processTimeout = setTimeout(() => {
+        logger.error({ assetId }, 'FFmpeg processing timeout - killing process');
+        ffmpeg.kill('SIGTERM');
+        reject(new Error('FFmpeg processing timeout after 5 minutes'));
+      }, 5 * 60 * 1000);
+
+      // Monitor for progress updates
+      const checkProgress = () => {
+        const timeSinceLastProgress = Date.now() - lastProgress;
+        if (timeSinceLastProgress > 30000) { // 30 seconds without progress
+          logger.warn({ assetId, timeSinceLastProgress }, 'No FFmpeg progress detected');
+        }
+      };
+      progressTimeout = setInterval(checkProgress, 10000);
 
       ffmpeg.stderr.on('data', (data) => {
         const output = data.toString();
         errorOutput += output;
-        // Log only important FFmpeg messages
-        if (output.includes('Error') || output.includes('Warning')) {
-          logger.warn({ ffmpeg: output.trim() }, 'FFmpeg output');
-        }
+        lastProgress = Date.now(); // Reset progress timer on any output
+        
+        // Log all FFmpeg output for debugging
+        logger.info({ ffmpeg: output.trim() }, 'FFmpeg output');
       });
 
       ffmpeg.on('close', (code) => {
+        clearTimeout(processTimeout);
+        clearInterval(progressTimeout);
+        
         if (code === 0) {
           logger.info({ assetId }, 'FFmpeg processing completed successfully');
           resolve();
         } else {
-          logger.error({ code, errorOutput }, 'FFmpeg processing failed');
+          logger.error({ 
+            code, 
+            errorOutput,
+            downloadUrl: downloadUrl.substring(0, 100) + '...',
+            lutPath,
+            outputPath 
+          }, 'FFmpeg processing failed - detailed error');
           reject(new Error(`FFmpeg exited with code ${code}: ${errorOutput}`));
         }
       });
 
       ffmpeg.on('error', (err) => {
+        clearTimeout(processTimeout);
+        clearInterval(progressTimeout);
         logger.error({ error: err }, 'FFmpeg spawn error');
         reject(err);
       });
