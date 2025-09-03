@@ -197,6 +197,59 @@ export class FrameIOService {
   }
 
   /**
+   * Create a file from a remote URL (Frame.io will download it)
+   */
+  async createRemoteFile(
+    accountId: string,
+    folderId: string,
+    fileName: string,
+    sourceUrl: string,
+  ): Promise<any> {
+    try {
+      const url = `/accounts/${accountId}/folders/${folderId}/files/remote_upload`;
+      const payload = {
+        data: {
+          name: fileName,
+          source_url: sourceUrl,
+        },
+      };
+      
+      logger.info({ 
+        url, 
+        fileName,
+        folderId,
+        accountId 
+      }, 'Creating remote file upload');
+      
+      const response = await this.axiosInstance.post(
+        url,
+        payload,
+        {
+          metadata: { startTime: Date.now() },
+        },
+      );
+      
+      const fileData = response.data.data || response.data;
+      
+      logger.info({ 
+        fileId: fileData.id,
+        fileName,
+        folderId 
+      }, 'Created remote file upload');
+      
+      return fileData;
+    } catch (error: any) {
+      logger.error({ 
+        accountId, 
+        folderId,
+        fileName,
+        error 
+      }, 'Failed to create remote file');
+      throw error;
+    }
+  }
+
+  /**
    * Create a new folder
    */
   async createFolder(
