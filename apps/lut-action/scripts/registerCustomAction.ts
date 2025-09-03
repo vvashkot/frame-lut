@@ -147,7 +147,7 @@ async function registerCustomAction() {
         event: 'lut.apply', // Custom event name
         url: process.env.PUBLIC_URL 
           ? `${process.env.PUBLIC_URL}/webhooks/frameio/custom-action`
-          : 'https://6005e80af886.ngrok.app/webhooks/frameio/custom-action',
+          : 'https://gallant-connection.railway.app/webhooks/frameio/custom-action',
       }
     };
 

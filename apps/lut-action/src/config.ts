@@ -22,6 +22,9 @@ const envSchema = z.object({
 
   // Frame.io API Configuration
   FRAMEIO_BASE_URL: z.string().url().default('https://api.frame.io/v4'),
+  
+  // Direct Access Token (for custom actions in Railway)
+  FRAMEIO_ACCESS_TOKEN: z.string().optional(),
 
   // User OAuth Configuration (optional)
   FRAMEIO_CLIENT_ID: z.string().optional(),

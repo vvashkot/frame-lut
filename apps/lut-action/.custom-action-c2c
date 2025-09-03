@@ -1,0 +1,10 @@
+{
+  "id": "3e7f1d7b-3bbe-42a0-a28b-41ac0c4d1b1d",
+  "account_id": "d64305f8-d98d-4958-8d72-45ce6f379415",
+  "workspace_id": "7bc9e4e0-8f06-41fd-88ef-942e3304d008",
+  "name": "Apply LUT",
+  "event": "lut.apply",
+  "webhook_url": "https://gallant-connection.railway.app/webhooks/frameio/custom-action",
+  "created_at": "2025-09-03T21:27:19.347480Z",
+  "secret_hint": "***rOo3"
+}

@@ -32,8 +32,14 @@ export class FrameIOService {
 
     // Add request interceptor for authentication
     this.axiosInstance.interceptors.request.use(async (requestConfig) => {
-      const token = await frameioAuth.getAccessToken();
-      requestConfig.headers.Authorization = `Bearer ${token}`;
+      // Use direct access token if available (for Railway/custom actions)
+      if (config.FRAMEIO_ACCESS_TOKEN) {
+        requestConfig.headers.Authorization = `Bearer ${config.FRAMEIO_ACCESS_TOKEN}`;
+      } else {
+        // Fall back to OAuth flow
+        const token = await frameioAuth.getAccessToken();
+        requestConfig.headers.Authorization = `Bearer ${token}`;
+      }
       return requestConfig;
     });
 
