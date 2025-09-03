@@ -45,7 +45,14 @@ RUN chmod +x /app/docker-entrypoint.sh
 # Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies after build
+# Import LUTs during build phase (before removing dev dependencies)
+RUN if [ -d "/app/luts" ]; then \
+      echo "Importing LUTs during build..." && \
+      npx tsx scripts/importLUTs.ts /app/luts && \
+      echo "LUTs imported successfully"; \
+    fi
+
+# Remove dev dependencies after build AND LUT import
 RUN npm prune --production
 
 # Switch to non-root user

@@ -10,7 +10,7 @@ async function registerActionWithAuth() {
     // Fixed IDs for C2C Partnerships V4 / C2C Testing/Demos
     const accountId = 'd64305f8-d98d-4958-8d72-45ce6f379415';
     const workspaceId = '7bc9e4e0-8f06-41fd-88ef-942e3304d008';
-    const webhookUrl = 'https://gallant-connection.railway.app/webhooks/frameio/custom-action';
+    const webhookUrl = 'https://frame-lut-production.up.railway.app/webhooks/frameio/custom-action';
     
     console.log('\n🎯 Registering NEW custom action with proper auth handling:');
     console.log('   Account: C2C Partnerships V4');
@@ -47,9 +47,9 @@ async function registerActionWithAuth() {
     // Custom action payload - Frame.io will handle authentication
     const customActionPayload = {
       data: {
-        name: 'Apply LUT (Railway)',
+        name: 'Apply LUT (Production)',
         description: 'Apply professional color grading LUTs to your video assets',
-        event: 'lut.apply.railway',
+        event: 'lut.apply.production',
         url: webhookUrl,
       }
     };

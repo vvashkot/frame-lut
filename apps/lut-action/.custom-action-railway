@@ -1,10 +1,10 @@
 {
-  "id": "d01fcc98-bfdb-41f5-8a94-b34457688ec6",
+  "id": "d3da8d5e-d662-42b4-8b4a-9e53f2d15376",
   "account_id": "d64305f8-d98d-4958-8d72-45ce6f379415",
   "workspace_id": "7bc9e4e0-8f06-41fd-88ef-942e3304d008",
-  "name": "Apply LUT (Railway)",
-  "event": "lut.apply.railway",
-  "webhook_url": "https://gallant-connection.railway.app/webhooks/frameio/custom-action",
-  "created_at": "2025-09-03T21:33:46.080804Z",
+  "name": "Apply LUT (Production)",
+  "event": "lut.apply.production",
+  "webhook_url": "https://frame-lut-production.up.railway.app/webhooks/frameio/custom-action",
+  "created_at": "2025-09-03T22:00:31.130002Z",
   "auth_note": "Using stored access token for API calls"
 }
