@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs-22_x", "npm-9_x", "ffmpeg"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = [
+  "npm run build",
+  "npx tsx scripts/importLUTs.ts luts/",
+  "echo 'LUTs imported successfully'",
+  "ffmpeg -version"
+]
+
+[start]
+cmd = "npm start"
