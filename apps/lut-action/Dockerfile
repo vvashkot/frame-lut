@@ -35,24 +35,17 @@ RUN npm ci --include=dev \
 # Copy source code
 COPY --chown=nodejs:nodejs . .
 
-# Copy LUTs directory if it exists (for pre-loaded LUTs)
+# Copy LUTs directory with descriptive names
 COPY --chown=nodejs:nodejs luts /app/luts/
 
-# Copy entrypoint script
-COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+# Copy startup script
+COPY --chown=nodejs:nodejs scripts/startup.sh /app/startup.sh
+RUN chmod +x /app/startup.sh
 
-# Build TypeScript
+# Build TypeScript (including import script)
 RUN npm run build
 
-# Import LUTs during build phase (before removing dev dependencies)
-RUN if [ -d "/app/luts" ]; then \
-      echo "Importing LUTs during build..." && \
-      npx tsx scripts/importLUTs.ts /app/luts && \
-      echo "LUTs imported successfully"; \
-    fi
-
-# Remove dev dependencies after build AND LUT import
+# Remove dev dependencies after build
 RUN npm prune --production
 
 # Switch to non-root user
@@ -68,5 +61,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use tini as entrypoint to handle signals properly
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Use our custom entrypoint script that imports LUTs before starting
-CMD ["/app/docker-entrypoint.sh"]
+# Use startup script to import LUTs and start the application
+CMD ["/app/startup.sh"]
