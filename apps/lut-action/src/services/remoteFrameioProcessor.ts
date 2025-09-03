@@ -32,38 +32,9 @@ export async function processVideoRemotely(
       throw new Error('Original asset has no parent');
     }
 
-    // Check if parent is a folder, create LUT_Processed folder if needed
-    let parentInfo;
-    try {
-      parentInfo = await frameioService.getAsset(uploadParentId, accountId);
-      
-      if (parentInfo.type !== 'folder') {
-        logger.info({ parentId: uploadParentId, parentType: parentInfo.type }, 
-          'Parent is not a folder, finding or creating LUT_Processed folder');
-        
-        const children = await frameioService.listAssetChildren(uploadParentId, 1, 100, accountId);
-        const processedFolder = children.find(child => 
-          child.type === 'folder' && child.name === 'LUT_Processed'
-        );
-        
-        if (processedFolder) {
-          uploadParentId = processedFolder.id;
-          logger.info({ folderId: uploadParentId }, 'Using existing LUT_Processed folder');
-        } else {
-          const newFolder = await frameioService.createFolder(
-            accountId,
-            uploadParentId,
-            'LUT_Processed'
-          );
-          uploadParentId = newFolder.id;
-          logger.info({ folderId: uploadParentId }, 'Created new LUT_Processed folder');
-        }
-      }
-    } catch (err) {
-      logger.error({ parentId: uploadParentId, error: err }, 
-        'Error checking parent type, cannot proceed');
-      throw new Error(`Failed to verify upload location: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    // Skip parent type checking for now - just upload to same folder as original
+    // The API call to check parent type is failing in production
+    logger.info({ uploadParentId }, 'Will upload processed file to same folder as original');
 
     // Create output filename
     const outputExt = path.extname(asset.name) || '.mp4';
