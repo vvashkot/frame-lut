@@ -3,3 +3,4 @@ buildCommand = "npm run build && npx tsx scripts/importLUTs.ts luts/ && echo 'LU
 
 [deploy]
 startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
