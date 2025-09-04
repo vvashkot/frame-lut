@@ -67,24 +67,23 @@ export async function processVideoRemotely(
         .replace(/=/g, '\\=')    // Escape equals signs
         .replace(/,/g, '\\,');   // Escape commas
       
-      // Build a filter chain that handles both ProRes and HEVC
-      // For HEVC with BT.2020, we need to handle the conversion carefully
-      const filterChain = [
-        'format=yuv444p16le',  // Convert to high precision format first
-        `lut3d=${escapedLutPath}`,  // Apply LUT
-        'format=yuv420p'  // Convert to output format
-      ].join(',');
+      // Simpler approach - let FFmpeg handle format conversion automatically
+      // Just apply the LUT directly
+      const filterChain = `lut3d=${escapedLutPath}`;
       
       const ffmpegArgs = [
         '-i', downloadUrl,        // Input from remote URL
-        '-vf', filterChain,       // Apply filter chain
+        '-vf', filterChain,       // Apply LUT filter
         '-c:v', 'libx264',        // Video codec
-        '-preset', 'faster',      // Faster preset for stability
+        '-preset', 'medium',      // More compatible preset
+        '-profile:v', 'high',     // H.264 High Profile
+        '-level', '4.1',          // H.264 Level
         '-crf', '23',             // Reasonable quality
-        '-pix_fmt', 'yuv420p',    // Ensure standard pixel format
+        '-pix_fmt', 'yuv420p',    // Force 8-bit output
         '-c:a', 'copy',           // Copy audio stream
         '-movflags', '+faststart', // Optimize for streaming
         '-max_muxing_queue_size', '9999', // Prevent muxing issues
+        '-threads', '4',          // Limit threads to avoid issues
         '-y',                     // Overwrite output
         outputPath                // Output file
       ];
