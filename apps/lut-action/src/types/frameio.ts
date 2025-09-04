@@ -72,21 +72,15 @@ export const VersionCreateResponseSchema = z.object({
 
 export type VersionCreateResponse = z.infer<typeof VersionCreateResponseSchema>;
 
-// Comment schema
+// Comment schema (Frame.io V4)
 export const CommentSchema = z.object({
   id: z.string().uuid(),
   text: z.string(),
-  asset_id: z.string().uuid(),
-  parent_id: z.string().uuid().nullable().optional(),
-  creator_id: z.string().uuid(),
-  timestamp: z.number().optional(),
-  annotation: z
-    .object({
-      x: z.number(),
-      y: z.number(),
-    })
-    .optional(),
-  resolved: z.boolean().default(false),
+  file_id: z.string().uuid(), // V4 uses file_id instead of asset_id
+  page: z.number().nullable().optional(),
+  timestamp: z.number().nullable().optional(),
+  annotation: z.string().nullable().optional(),
+  text_edited_at: z.string().datetime().optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });

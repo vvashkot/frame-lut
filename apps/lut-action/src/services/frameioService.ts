@@ -500,7 +500,8 @@ export class FrameIOService {
         {
           data: {
             text,
-            timestamp,
+            timestamp: timestamp ?? null,
+            page: null, // V4 API requires page field
           },
         },
         {
