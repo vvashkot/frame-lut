@@ -58,8 +58,8 @@ export async function processVideoRemotely(
     logger.info({ assetId, lutName }, 'Processing video with FFmpeg (remote URL input)');
     
     await new Promise<void>((resolve, reject) => {
-      // For FFmpeg filter, we need to escape special characters in the path
-      // The lut3d filter requires the path to be properly escaped
+      // For 10-bit HEVC input, we need to handle color space conversion explicitly
+      // The LUT3D filter expects RGB input, so we need proper conversion
       const escapedLutPath = lutPath
         .replace(/\\/g, '\\\\')  // Escape backslashes
         .replace(/:/g, '\\:')    // Escape colons
@@ -67,28 +67,33 @@ export async function processVideoRemotely(
         .replace(/=/g, '\\=')    // Escape equals signs
         .replace(/,/g, '\\,');   // Escape commas
       
-      // Try a simpler approach first - without complex filters
+      // Build a filter chain that properly handles 10-bit color spaces
+      const filterChain = [
+        'scale=in_color_matrix=bt2020nc:out_color_matrix=bt709', // Convert color space first
+        `lut3d=${escapedLutPath}`,  // Apply LUT
+        'format=yuv420p'  // Ensure output format
+      ].join(',');
+      
       const ffmpegArgs = [
         '-i', downloadUrl,        // Input from remote URL
-        '-vf', `lut3d=${escapedLutPath}`, // Apply LUT with escaped path
-        '-c:v', 'libx264',         // Video codec
-        '-preset', 'veryfast',     // Balance speed and compression
+        '-vf', filterChain,       // Apply filter chain
+        '-c:v', 'libx264',        // Video codec
+        '-preset', 'fast',        // Faster preset to avoid timeout
         '-crf', '23',             // Reasonable quality
-        '-pix_fmt', 'yuv420p',    // Standard pixel format
+        '-color_trc', 'bt709',    // Set transfer characteristics
+        '-colorspace', 'bt709',   // Set colorspace
+        '-color_primaries', 'bt709', // Set color primaries
         '-c:a', 'copy',           // Copy audio stream
         '-movflags', '+faststart', // Optimize for streaming
-        '-loglevel', 'verbose',   // More detailed logging
-        '-progress', 'pipe:2',    // Output progress to stderr
+        '-max_muxing_queue_size', '9999', // Prevent muxing issues
         '-y',                     // Overwrite output
         outputPath                // Output file
       ];
 
-      logger.debug({ ffmpegArgs }, 'FFmpeg command arguments');
       logger.info({ 
-        lutPath, 
-        escapedLutPath,
-        outputPath,
-        ffmpegPath: config.FFMPEG_PATH
+        lutPath,
+        filterChain,
+        outputPath
       }, 'FFmpeg execution details');
 
       const ffmpeg = spawn(config.FFMPEG_PATH, ffmpegArgs);
