@@ -45,9 +45,9 @@ export async function processVideoRemotely(
     // The API call to check parent type is failing in production
     logger.info({ uploadParentId }, 'Will upload processed file to same folder as original');
 
-    // Create output filename
+    // Keep the same filename as the original
+    const processedFileName = asset.name;
     const outputExt = path.extname(asset.name) || '.mp4';
-    const processedFileName = `${path.parse(asset.name).name}_LUT_${lutName}${outputExt}`;
     
     // Create a temporary output file path
     const tempDir = config.TMP_DIR;

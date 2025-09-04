@@ -124,7 +124,8 @@ export async function uploadProcessedVideo(
     }
 
     // Create a new file for the processed video
-    const processedFileName = `${path.parse(originalAsset.name).name}_LUT_${lutName}${path.extname(fileName)}`;
+    // Keep the same filename as the original
+    const processedFileName = originalAsset.name;
     
     logger.info({ parentId: uploadParentId, processedFileName, size: fileStats.size }, 'Creating new file for upload');
     const newFile = await frameioService.createFile(
