@@ -217,8 +217,36 @@ export class FrameIOAuth {
       return this.getUserAccessToken(userId, refreshToken);
     }
 
-    // Try to load token from file if no user token provided
+    // Try to load token from environment variable first (for production)
     if (!userId && !refreshToken) {
+      // Check environment variable first (for Railway/production)
+      if (process.env.FRAMEIO_TOKEN) {
+        try {
+          const stored = JSON.parse(process.env.FRAMEIO_TOKEN);
+          
+          // Check if token is still valid (with 5 minute buffer for refresh)
+          const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+          if (stored.access_token && stored.expires_at > fiveMinutesFromNow) {
+            logger.info('Using access token from FRAMEIO_TOKEN environment variable');
+            return stored.access_token;
+          }
+          
+          // Try to refresh if we have a refresh token
+          if (stored.refresh_token && isUserOAuthConfigured) {
+            logger.info('Token from env expired or expiring soon, refreshing');
+            const newToken = await this.refreshUserToken(stored.refresh_token);
+            
+            // Note: We can't update the env variable, so just return the new token
+            // In production, you'll need to manually update the env variable periodically
+            logger.warn('Token refreshed but cannot update FRAMEIO_TOKEN env variable - update manually in Railway');
+            return newToken.access_token;
+          }
+        } catch (error) {
+          logger.error({ error }, 'Failed to parse FRAMEIO_TOKEN environment variable');
+        }
+      }
+      
+      // Fall back to file-based token (for local development)
       try {
         const fs = await import('fs/promises');
         const tokenData = await fs.readFile('.frameio-token', 'utf-8');

@@ -21,6 +21,7 @@
     "import:luts": "tsx scripts/importLUTs.ts",
     "frameio:info": "tsx scripts/getFrameioInfo.ts",
     "frameio:refresh": "tsx scripts/refreshToken.ts",
+    "frameio:env": "tsx scripts/getTokenForEnv.ts",
     "register:action": "tsx scripts/registerCustomAction.ts",
     "setup:webhook": "tsx scripts/setupWebhook.ts",
     "test:lut": "tsx scripts/testLUTProcessing.ts",
