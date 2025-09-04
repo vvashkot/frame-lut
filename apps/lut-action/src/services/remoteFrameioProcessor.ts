@@ -67,22 +67,21 @@ export async function processVideoRemotely(
         .replace(/=/g, '\\=')    // Escape equals signs
         .replace(/,/g, '\\,');   // Escape commas
       
-      // Build a filter chain that properly handles 10-bit color spaces
+      // Build a filter chain that handles both ProRes and HEVC
+      // For HEVC with BT.2020, we need to handle the conversion carefully
       const filterChain = [
-        'scale=in_color_matrix=bt2020nc:out_color_matrix=bt709', // Convert color space first
+        'format=yuv444p16le',  // Convert to high precision format first
         `lut3d=${escapedLutPath}`,  // Apply LUT
-        'format=yuv420p'  // Ensure output format
+        'format=yuv420p'  // Convert to output format
       ].join(',');
       
       const ffmpegArgs = [
         '-i', downloadUrl,        // Input from remote URL
         '-vf', filterChain,       // Apply filter chain
         '-c:v', 'libx264',        // Video codec
-        '-preset', 'fast',        // Faster preset to avoid timeout
+        '-preset', 'faster',      // Faster preset for stability
         '-crf', '23',             // Reasonable quality
-        '-color_trc', 'bt709',    // Set transfer characteristics
-        '-colorspace', 'bt709',   // Set colorspace
-        '-color_primaries', 'bt709', // Set color primaries
+        '-pix_fmt', 'yuv420p',    // Ensure standard pixel format
         '-c:a', 'copy',           // Copy audio stream
         '-movflags', '+faststart', // Optimize for streaming
         '-max_muxing_queue_size', '9999', // Prevent muxing issues
