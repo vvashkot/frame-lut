@@ -58,21 +58,27 @@ export async function processVideoRemotely(
     logger.info({ assetId, lutName }, 'Processing video with FFmpeg (remote URL input)');
     
     await new Promise<void>((resolve, reject) => {
-      // Escape the LUT path for FFmpeg filter
-      const escapedLutPath = lutPath.replace(/:/g, '\\:').replace(/'/g, "\\'");
+      // For FFmpeg filter, we need to escape special characters in the path
+      // The lut3d filter requires the path to be properly escaped
+      const escapedLutPath = lutPath
+        .replace(/\\/g, '\\\\')  // Escape backslashes
+        .replace(/:/g, '\\:')    // Escape colons
+        .replace(/'/g, "\\'")    // Escape single quotes
+        .replace(/=/g, '\\=')    // Escape equals signs
+        .replace(/,/g, '\\,');   // Escape commas
       
+      // Try a simpler approach first - without complex filters
       const ffmpegArgs = [
         '-i', downloadUrl,        // Input from remote URL
         '-vf', `lut3d=${escapedLutPath}`, // Apply LUT with escaped path
         '-c:v', 'libx264',         // Video codec
-        '-preset', 'ultrafast',    // Fastest encoding to avoid timeout
+        '-preset', 'veryfast',     // Balance speed and compression
         '-crf', '23',             // Reasonable quality
         '-pix_fmt', 'yuv420p',    // Standard pixel format
         '-c:a', 'copy',           // Copy audio stream
         '-movflags', '+faststart', // Optimize for streaming
-        '-analyzeduration', '100M', // Increase analysis duration
-        '-probesize', '100M',      // Increase probe size
-        '-threads', '0',          // Use all available threads
+        '-loglevel', 'verbose',   // More detailed logging
+        '-progress', 'pipe:2',    // Output progress to stderr
         '-y',                     // Overwrite output
         outputPath                // Output file
       ];
@@ -125,8 +131,17 @@ export async function processVideoRemotely(
           lastProgress = Date.now(); // Reset progress timer on any output
         }
         
-        // Log all FFmpeg output for debugging
-        logger.info({ ffmpeg: output.trim() }, 'FFmpeg output');
+        // Check for specific LUT errors
+        if (output.includes('Cannot find color') || output.includes('lut3d') || output.includes('No such file')) {
+          logger.error({ lutPath, escapedLutPath }, 'LUT file error detected in FFmpeg output');
+        }
+        
+        // Log verbose output only in debug mode to reduce noise
+        if (output.includes('frame=') || output.includes('fps=')) {
+          logger.debug({ ffmpeg: output.trim() }, 'FFmpeg progress');
+        } else {
+          logger.info({ ffmpeg: output.trim() }, 'FFmpeg output');
+        }
       });
 
       ffmpeg.on('close', (code) => {
