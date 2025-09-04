@@ -222,12 +222,23 @@ export class FrameIOAuth {
       // Check environment variable first (for Railway/production)
       if (process.env.FRAMEIO_TOKEN) {
         try {
+          logger.info('Found FRAMEIO_TOKEN environment variable, attempting to parse');
           const stored = JSON.parse(process.env.FRAMEIO_TOKEN);
           
           // Check if token is still valid (with 5 minute buffer for refresh)
           const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
-          if (stored.access_token && stored.expires_at > fiveMinutesFromNow) {
-            logger.info('Using access token from FRAMEIO_TOKEN environment variable');
+          const expiresAt = stored.expires_at || 0;
+          const isValid = stored.access_token && expiresAt > fiveMinutesFromNow;
+          
+          logger.info({ 
+            has_access_token: !!stored.access_token,
+            expires_at: new Date(expiresAt).toISOString(),
+            is_valid: isValid,
+            has_refresh_token: !!stored.refresh_token
+          }, 'FRAMEIO_TOKEN environment variable status');
+          
+          if (isValid) {
+            logger.info('Using valid access token from FRAMEIO_TOKEN environment variable');
             return stored.access_token;
           }
           
