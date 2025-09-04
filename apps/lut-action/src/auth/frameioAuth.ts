@@ -224,25 +224,32 @@ export class FrameIOAuth {
         const tokenData = await fs.readFile('.frameio-token', 'utf-8');
         const stored = JSON.parse(tokenData);
         
-        // Check if token is still valid
-        if (stored.access_token && stored.expires_at > Date.now()) {
-          logger.info('Using access token from .frameio-token file');
+        // Check if token is still valid (with 5 minute buffer for refresh)
+        const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+        if (stored.access_token && stored.expires_at > fiveMinutesFromNow) {
+          logger.info('Using valid access token from .frameio-token file');
           return stored.access_token;
         }
         
         // Try to refresh if we have a refresh token
         if (stored.refresh_token && isUserOAuthConfigured) {
-          logger.info('Refreshing expired token from .frameio-token file');
+          logger.info('Token expired or expiring soon, refreshing from .frameio-token file');
           const newToken = await this.refreshUserToken(stored.refresh_token);
           
           // Save the new token
-          await fs.writeFile('.frameio-token', JSON.stringify({
+          const newTokenData = {
             access_token: newToken.access_token,
             refresh_token: newToken.refresh_token || stored.refresh_token,
             expires_in: newToken.expires_in,
             expires_at: Date.now() + (newToken.expires_in * 1000),
             created_at: new Date().toISOString(),
-          }, null, 2));
+            refreshed_at: new Date().toISOString(),
+          };
+          
+          await fs.writeFile('.frameio-token', JSON.stringify(newTokenData, null, 2));
+          logger.info({ 
+            expires_at: new Date(newTokenData.expires_at).toISOString() 
+          }, 'Token refreshed successfully and saved');
           
           return newToken.access_token;
         }

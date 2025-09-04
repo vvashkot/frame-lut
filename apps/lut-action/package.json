@@ -20,6 +20,7 @@
     "seed:luts": "tsx scripts/seedLUTs.ts",
     "import:luts": "tsx scripts/importLUTs.ts",
     "frameio:info": "tsx scripts/getFrameioInfo.ts",
+    "frameio:refresh": "tsx scripts/refreshToken.ts",
     "register:action": "tsx scripts/registerCustomAction.ts",
     "setup:webhook": "tsx scripts/setupWebhook.ts",
     "test:lut": "tsx scripts/testLUTProcessing.ts",
